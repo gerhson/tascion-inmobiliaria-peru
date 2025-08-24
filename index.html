@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tasación Inmuebles</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 20px; }
+label { display: block; margin-top: 10px; }
+input, select { width: 200px; margin-top: 5px; }
+button { margin-top: 20px; padding: 10px 20px; }
+.resultado { margin-top: 20px; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h2>Tasación de Inmuebles</h2>
+
+<form id="calc">
+    <label>Tipo de Inmueble
+        <select id="tipo">
+            <option value="">Selecciona tipo</option>
+            <option value="departamento">Departamento</option>
+            <option value="casa">Casa</option>
+            <option value="terreno">Terreno</option>
+        </select>
+    </label>
+
+    <label>Distrito
+        <select id="distrito">
+            <option value="">Selecciona distrito</option>
+        </select>
+    </label>
+
+    <label>Zona
+        <select id="zona">
+            <option value="">Selecciona zona</option>
+        </select>
+    </label>
+
+    <label>Antigüedad (años)
+        <input type="number" id="antiguedad" min="0" value="0">
+    </label>
+
+    <label>Piso
+        <input type="number" id="piso" min="0" value="0">
+    </label>
+
+    <label>Ascensor
+        <select id="ascensor">
+            <option value="si">Sí</option>
+            <option value="no">No</option>
+        </select>
+    </label>
+
+    <label>Dormitorios
+        <input type="number" id="dormitorios" min="0" value="2">
+    </label>
+
+    <label>Baños
+        <input type="number" id="banos" min="0" value="2">
+    </label>
+
+    <label>Área Construida (m²)
+        <input type="number" id="areaConstruida" min="0" value="50">
+    </label>
+
+    <label>Área Libre (m²)
+        <input type="number" id="areaLibre" min="0" value="0">
+    </label>
+
+    <label>Área de Terreno (m²)
+        <input type="number" id="areaTerreno" min="0" value="0">
+    </label>
+
+    <label>Moneda
+        <select id="moneda">
+            <option value="USD">USD</option>
+            <option value="PEN">PEN</option>
+        </select>
+    </label>
+
+    <label>Estado de Conservación
+        <select id="estado">
+            <option value="excelente">Excelente</option>
+            <option value="bueno">Bueno</option>
+            <option value="regular">Regular</option>
+            <option value="remodelar">Remodelar</option>
+        </select>
+    </label>
+
+    <label>Eficiencia Energética
+        <select id="eficiencia">
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+            <option value="D">D</option>
+            <option value="E">E</option>
+            <option value="F">F</option>
+        </select>
+    </label>
+
+    <button type="submit">Calcular</button>
+</form>
+
+<div class="resultado" id="resultado"></div>
+
+<script>
+// =======================
+// Datos de Distritos y Zonas
+// =======================
+const DATA = {
+    "San Isidro": { zones: { "San Isidro Sur (Financiero)": 11781, "San Isidro Centro": 10850 } },
+    "Miraflores": { zones: { "Malecon de Miraflores": 10800, "Parque Kennedy": 10200 } },
+    "Santiago de Surco": { zones: { "Monterrico": 7800, "Chacarilla": 7400 } },
+    "La Molina": { zones: { "La Molina Club": 7200, "La Planicie": 6900 } }
+    // Agrega más distritos y zonas según necesites
+};
+
+// =======================
+// Factores de Tasación
+// =======================
+const FACTORES = {
+    antiguedad: { depreciacionAnual: 0.01, max: 0.3 },
+    dormitorios: { base: 2, incremento: 0.08, max: 0.25 },
+    banos: { base: 2, incremento: 0.06, max: 0.18 },
+    areaLibre: { departamento: 0.25, casa: 0.4, terreno: 0.9 },
+    tipoInmueble: { departamento: 1, casa: 1.12, terreno: 0.8 },
+    eficiencia: { A: 1.10, B:1.05, C:1, D:0.95, E:0.9, F:0.85 },
+    estado: { excelente:1.05, bueno:1, regular:0.9, remodelar:0.75 }
+};
+
+// =======================
+// Elementos DOM
+// =======================
+const tipoSel = document.getElementById("tipo");
+const distritoSel = document.getElementById("distrito");
+const zonaSel = document.getElementById("zona");
+const antiguedad = document.getElementById("antiguedad");
+const piso = document.getElementById("piso");
+const ascensor = document.getElementById("ascensor");
+const dormitorios = document.getElementById("dormitorios");
+const banos = document.getElementById("banos");
+const areaConstruida = document.getElementById("areaConstruida");
+const areaLibre = document.getElementById("areaLibre");
+const areaTerreno = document.getElementById("areaTerreno");
+const moneda = document.getElementById("moneda");
+const estado = document.getElementById("estado");
+const eficiencia = document.getElementById("eficiencia");
+const resultado = document.getElementById("resultado");
+
+// =======================
+// Cargar Distritos
+// =======================
+Object.keys(DATA).forEach(d => {
+    const opt = document.createElement("option");
+    opt.value = d;
+    opt.textContent = d;
+    distritoSel.appendChild(opt);
+});
+
+// =======================
+// Cargar Zonas según Distrito
+// =======================
+distritoSel.addEventListener("change", () => {
+    zonaSel.innerHTML = '<option value="">Selecciona zona</option>';
+    const dist = distritoSel.value;
+    if(DATA[dist]?.zones){
+        Object.keys(DATA[dist].zones).forEach(z => {
+            const opt = document.createElement("option");
+            opt.value = z;
+            opt.textContent = z;
+            zonaSel.appendChild(opt);
+        });
+    }
+});
+
+// =======================
+// Habilitar/Deshabilitar campos según tipo
+// =======================
+tipoSel.addEventListener("change", () => {
+    const t = tipoSel.value;
+    if(t==="departamento"){
+        antiguedad.disabled=false; piso.disabled=false; ascensor.disabled=false;
+        dormitorios.disabled=false; banos.disabled=false;
+        areaConstruida.disabled=false; areaLibre.disabled=false; areaTerreno.disabled=true;
+        estado.disabled=false; eficiencia.disabled=false;
+    } else if(t==="casa"){
+        antiguedad.disabled=false; piso.disabled=true; ascensor.disabled=true;
+        dormitorios.disabled=false; banos.disabled=false;
+        areaConstruida.disabled=false; areaLibre.disabled=false; areaTerreno.disabled=false;
+        estado.disabled=false; eficiencia.disabled=false;
+    } else if(t==="terreno"){
+        antiguedad.disabled=false; piso.disabled=true; ascensor.disabled=true;
+        dormitorios.disabled=true; banos.disabled=true;
+        areaConstruida.disabled=true; areaLibre.disabled=true; areaTerreno.disabled=false;
+        estado.disabled=true; eficiencia.disabled=true;
+    } else {
+        // Reset
+        antiguedad.disabled=true; piso.disabled=true; ascensor.disabled=true;
+        dormitorios.disabled=true; banos.disabled=true;
+        areaConstruida.disabled=true; areaLibre.disabled=true; areaTerreno.disabled=true;
+        estado.disabled=true; eficiencia.disabled=true;
+    }
+});
+
+// =======================
+// Función de Cálculo
+// =======================
+function calcular(){
+    const t = tipoSel.value;
+    const dist = distritoSel.value;
+    const z = zonaSel.value;
+    if(!t || !dist || !z){
+        alert("Selecciona tipo, distrito y zona");
+        return;
+    }
+
+    let base = DATA[dist].zones[z]; // precio base por m²
+
+    // Área
+    let area = 0;
+    if(t==="departamento" || t==="casa"){
+        area = Number(areaConstruida.value) + Number(areaLibre.value)*FACTORES.areaLibre[t];
+    } else if(t==="terreno"){
+        area = Number(areaTerreno.value);
+    }
+
+    let precio = base * area * FACTORES.tipoInmueble[t];
+
+    // Antiguedad
+    const dep = Math.min(antiguedad.value*FACTORES.antiguedad.depreciacionAnual, FACTORES.antiguedad.max);
+    precio *= (1 - dep);
+
+    // Dormitorios
+    if(t==="departamento" || t==="casa"){
+        let incDorm = Math.min((dormitorios.value-FACTORES.dormitorios.base)*FACTORES.dormitorios.incremento, FACTORES.dormitorios.max);
+        precio *= (1+incDorm);
+    }
+
+    // Baños
+    if(t==="departamento" || t==="casa"){
+        let incBanos = Math.min((banos.value-FACTORES.banos.base)*FACTORES.banos.incremento, FACTORES.banos.max);
+        precio *= (1+incBanos);
+    }
+
+    // Estado y eficiencia
+    if(t!=="terreno"){
+        precio *= FACTORES.estado[estado.value] || 1;
+        precio *= FACTORES.eficiencia[eficiencia.value] || 1;
+    }
+
+    // Precio mínimo, medio, máximo ±10%
+    const min = precio*0.9;
+    const med = precio;
+    const max = precio*1.1;
+
+    resultado.innerHTML = `Precio Mínimo: ${moneda.value} ${min.toFixed(2)} <br>
+                           Precio Medio: ${moneda.value} ${med.toFixed(2)} <br>
+                           Precio Máximo: ${moneda.value} ${max.toFixed(2)}`;
+}
+
+// =======================
+// Form submit
+// =======================
+document.getElementById("calc").addEventListener("submit", e=>{
+    e.preventDefault();
+    calcular();
+});
+</script>
+
+</body>
+</html>
